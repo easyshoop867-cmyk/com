@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eazy SHOP | Professional Gaming Store</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;700&family=Kanit:wght@200;500;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --main-red: #ff0000;
+            --dark-red: #8b0000;
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --bg-nav: rgba(10, 10, 10, 0.95);
+            --text-main: #ffffff;
+            --text-dim: #b0b0b0;
+            --border: #252525;
+            --shadow-red: 0 0 15px rgba(255, 0, 0, 0.5);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Sans Lao', 'Kanit', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); line-height: 1.6; overflow-x: hidden; position: relative; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 15px; }
+        .hidden { display: none !important; }
+
+        /* --- Snow Effect CSS --- */
+        .snow-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
+        .snowflake { position: fixed; top: -10px; color: white; font-size: 1em; user-select: none; z-index: 9999; animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite; }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+        }
+
+        /* Search Box Styles */
+        .search-container { position: relative; display: flex; align-items: center; }
+        .search-input { background: #1a1a1a; border: 1px solid var(--border); color: white; padding: 8px 10px 8px 30px; border-radius: 20px; width: 100px; transition: var(--transition); font-size: 12px; }
+        .search-input:focus { width: 140px; outline: none; border-color: var(--main-red); box-shadow: var(--shadow-red); }
+        .search-icon { position: absolute; left: 10px; color: var(--text-dim); font-size: 12px; }
+
+        .btn { padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: var(--transition); text-decoration: none; color: white; }
+        .btn-red { background: linear-gradient(135deg, var(--main-red), var(--dark-red)); box-shadow: var(--shadow-red); }
+        .btn-red:hover { transform: translateY(-3px); filter: brightness(1.2); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--main-red); color: var(--main-red); }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        header { background: var(--bg-nav); padding: 10px 0; position: sticky; top: 0; z-index: 1000; border-bottom: 2px solid var(--main-red); backdrop-filter: blur(10px); }
+        .nav-wrapper { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* ปรับ Logo ให้เด่นในมือถือ */
+        .logo { font-size: 22px; font-weight: 800; color: var(--main-red); text-shadow: var(--shadow-red); letter-spacing: 1px; flex-shrink: 0; }
+        .logo span { color: white; }
+        
+        .nav-menu { display: flex; gap: 12px; list-style: none; align-items: center; }
+        .nav-link { cursor: pointer; transition: var(--transition); font-size: 13px; font-weight: 500; }
+        .nav-link:hover { color: var(--main-red); }
+
+        .hero-banner { width: 100%; height: 200px; border-radius: 15px; background-size: cover; background-position: center; margin-top: 20px; border: 1px solid var(--border); }
+        .section-title { font-size: 1.2rem; margin: 30px 0 15px 0; border-left: 4px solid var(--main-red); padding-left: 12px; }
+
+        /* --- ปรับบล็อกตามคำสั่ง --- */
+        /* 1. หมวดหมู่ทรงสูง (Vertical Card) */
+        .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .cat-item { background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
+        .cat-img-box { width: 100%; aspect-ratio: 3/4; overflow: hidden; }
+        .cat-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .cat-name { padding: 8px 5px; text-align: center; font-weight: bold; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* 2. สินค้าทรงสี่เหลี่ยมจัตุรัส 2 บล็อกคู่ */
+        .prod-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .prod-card { background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); transition: var(--transition); display: flex; flex-direction: column; }
+        .prod-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
+        .prod-body { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; }
+        .prod-title { font-weight: 500; margin-bottom: 5px; height: 2.4em; overflow: hidden; font-size: 0.85rem; line-height: 1.2; }
+        .prod-price { font-size: 1rem; font-weight: 800; color: var(--main-red); margin-bottom: 10px; }
+
+        /* Detail Page */
+        .detail-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+        .detail-left { flex: 1; min-width: 100%; }
+        .detail-right { flex: 1; min-width: 100%; }
+        .detail-img { width: 100%; border-radius: 15px; border: 1px solid var(--border); }
+        .desc-box { background: #111; padding: 15px; border-radius: 12px; border-left: 4px solid var(--main-red); margin-bottom: 20px; }
+
+        /* Admin Table & Others */
+        .admin-table-container { width: 100%; overflow-x: auto; }
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .admin-table th, .admin-table td { padding: 12px; border-bottom: 1px solid #222; text-align: left; }
+        .admin-table th { color: var(--main-red); }
+        .form-control { width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: white; margin-bottom: 15px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: #0f0f0f; width: 90%; max-width: 400px; padding: 30px; border-radius: 20px; border: 1px solid var(--main-red); text-align: center; position: relative; }
+        
+        .social-btn { width: 100%; height: 55px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; font-weight: bold; text-decoration: none; color: white; }
+        .wa-bg { background: #25d366; } .fb-bg { background: #1877f2; } .tt-bg { background: #000; border: 1px solid #333; }
+
+        footer { padding: 30px 0; text-align: center; border-top: 1px solid var(--border); margin-top: 40px; color: var(--text-dim); font-size: 12px; }
+
+        @media (min-width: 768px) {
+            .hero-banner { height: 350px; }
+            .cat-grid { grid-template-columns: repeat(6, 1fr); }
+            .prod-grid { grid-template-columns: repeat(4, 1fr); }
+            .detail-left, .detail-right { min-width: 300px; }
+            .logo { font-size: 28px; }
+            .search-input { width: 180px; }
+            .search-input:focus { width: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="snow-container" id="snow"></div>
+
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo" onclick="router.home()" style="cursor:pointer;">Eazy <span>SHOP</span></div>
+            <ul class="nav-menu">
+                <li class="nav-link" onclick="router.home()">ໜ້າຫຼັກ</li>
+                <li class="nav-link" onclick="router.all()">ສິນຄ້າ</li>
+                <li class="nav-link" onclick="app.openContact()">ຕິດຕໍ່</li>
+                <li class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="main-search" class="search-input" placeholder="ຄົ້ນຫາ..." onkeyup="app.handleSearch(event)">
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <main id="view-home" class="page-view container">
+        <div id="hero" class="hero-banner"></div>
+        <div class="section-title"><h2>ໝວດໝູ່ສິນຄ້າ</h2></div>
+        <div id="cat-list-home" class="cat-grid"></div>
+        <div class="section-title"><h2>ສິນຄ້າແນະນຳ</h2></div>
+        <div id="home-prods" class="prod-grid"></div>
+    </main>
+
+    <main id="view-list" class="page-view container hidden" style="padding-top:20px;">
+        <button class="btn btn-outline btn-sm" onclick="router.home()"><i class="fas fa-arrow-left"></i> ກັບຄືນ</button>
+        <div class="section-title"><h2 id="list-title">ສິນຄ້າທັງໝົດ</h2></div>
+        <div id="list-prods" class="prod-grid"></div>
+    </main>
+
+    <main id="view-detail" class="page-view container hidden" style="padding-top:20px;">
+        <button class="btn btn-outline btn-sm" onclick="router.back()"><i class="fas fa-arrow-left"></i> ກັບຄືນ</button>
+        <div class="detail-flex">
+            <div class="detail-left"><img id="det-img" src="" class="detail-img"></div>
+            <div class="detail-right">
+                <h1 id="det-title" style="font-size: 1.8rem; margin-bottom: 10px;">Product Name</h1>
+                <div id="det-price" class="prod-price" style="font-size: 1.6rem;">0 ₭</div>
+                <div class="desc-box">
+                    <h3 style="margin-bottom:8px; color: var(--main-red); font-size: 1rem;">ລາຍລະອຽດສິນຄ້າ:</h3>
+                    <p id="det-desc" style="white-space: pre-line; color: #ccc; font-size: 0.9rem;"></p>
+                </div>
+                <button class="btn btn-red" style="width: 100%; height: 60px; font-size: 1.2rem;" onclick="app.orderWhatsApp()">
+                    ຢືນຢັນການສັ່ງຊື້ <i class="fas fa-shopping-cart"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-admin" class="page-view container hidden" style="padding-top:30px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+            <h1>Admin Panel</h1>
+            <button class="btn btn-outline" onclick="location.reload()">Logout</button>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:30px; overflow-x:auto; padding-bottom: 10px;">
+            <button class="btn btn-red" onclick="app.tab('tab-p')">ສິນຄ້າ</button>
+            <button class="btn btn-red" onclick="app.tab('tab-c')">ໝວດໝູ່</button>
+            <button class="btn btn-red" onclick="app.tab('tab-u')">ຈັດการ Admin</button>
+            <button class="btn btn-red" onclick="app.tab('tab-s')">ຕັ້ງຄ່າ</button>
+        </div>
+
+        <div id="tab-p" class="admin-tab">
+            <div style="background:#111; padding:20px; border-radius:15px; margin-bottom:20px;">
+                <input type="hidden" id="edit-p-id">
+                <input type="text" id="p-name" class="form-control" placeholder="ຊື່ສິນຄ້າ">
+                <input type="number" id="p-price" class="form-control" placeholder="ລາຄາ">
+                <input type="text" id="p-img" class="form-control" placeholder="URL ຮູບ">
+                <select id="p-cat" class="form-control"></select>
+                <textarea id="p-desc" class="form-control" placeholder="ລາຍລະອຽດ" style="height:100px;"></textarea>
+                <button id="btn-save-p" class="btn btn-red" onclick="app.saveProduct()">ບັນທຶກສິນຄ້າ</button>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead><tr><th>ຊື່</th><th>ລາຄา</th><th>ຈັດການ</th></tr></thead>
+                    <tbody id="t-prods"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-c" class="admin-tab hidden">
+            <div style="background:#111; padding:20px; border-radius:15px; margin-bottom:20px;">
+                <input type="hidden" id="edit-c-id">
+                <input type="text" id="c-name" class="form-control" placeholder="ຊື່ໝວດໝູ່">
+                <input type="text" id="c-img" class="form-control" placeholder="URL ຮູບປົກ">
+                <button id="btn-save-c" class="btn btn-red" onclick="app.saveCategory()">ບັນທຶກໝວດໝູ່</button>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead><tr><th>ຮູບ</th><th>ຊື່</th><th>ຈັດການ</th></tr></thead>
+                    <tbody id="t-cats"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-u" class="admin-tab hidden">
+            <div style="background:#111; padding:20px; border-radius:15px; margin-bottom:20px;">
+                <h4>ເພີ່ມ Admin ໃໝ່</h4><br>
+                <input type="text" id="u-user" class="form-control" placeholder="Username">
+                <input type="text" id="u-pass" class="form-control" placeholder="Password">
+                <button class="btn btn-red" onclick="app.saveUser()">ເພີ່ມ Admin</button>
+            </div>
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead><tr><th>Username</th><th>Password</th><th>ຈັດການ</th></tr></thead>
+                    <tbody id="t-users"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-s" class="admin-tab hidden">
+            <div style="background:#111; padding:20px; border-radius:15px;">
+                <label>Banner URL:</label><input type="text" id="s-banner" class="form-control">
+                <label>WhatsApp:</label><input type="text" id="s-wa" class="form-control" placeholder="เบอร์โทร หรือลิงก์">
+                <label>TikTok:</label><input type="text" id="s-tt" class="form-control" placeholder="ชื่อผู้ใช้ หรือลิงก์">
+                <label>Facebook:</label><input type="text" id="s-fb" class="form-control" placeholder="ลิงก์โปรไฟล์">
+                <button class="btn btn-red" onclick="app.saveSettings()">ບັນທຶກຕັ້ງຄ່າ</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="contact-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span style="position:absolute; top:20px; right:25px; cursor:pointer; font-size:24px;" onclick="app.closeModal('contact-modal')">&times;</span>
+            <h2>ຕິດຕໍ່ແອັດມິນ</h2><br>
+            <a href="#" id="l-wa" target="_blank" class="social-btn wa-bg"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+            <a href="#" id="l-tt" target="_blank" class="social-btn tt-bg"><i class="fab fa-tiktok"></i> TikTok</a>
+            <a href="#" id="l-fb" target="_blank" class="social-btn fb-bg"><i class="fab fa-facebook"></i> Facebook</a>
+        </div>
+    </div>
+
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width:350px;">
+            <h2>Admin Login</h2><br>
+            <input type="text" id="log-u" class="form-control" placeholder="User">
+            <input type="password" id="log-p" class="form-control" placeholder="Pass">
+            <button class="btn btn-red" style="width:100%" onclick="app.login()">Login</button>
+            <p style="margin-top:15px; cursor:pointer; color:#444;" onclick="app.closeModal('login-modal')">Close</p>
+        </div>
+    </div>
+
+    <footer><p>Copyright © 2026 - All right reserved by easyshop.</p></footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://qdzurrtniagbkfbcougk.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkenVycnRuaWFnYmtmYmNvdWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1Mzg0OTksImV4cCI6MjA4NjExNDQ5OX0.psyh10Xm4cOQKt0z7NiObHImWYJ4_5lu-ZU3UhUmrLs';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let activeProduct = null; 
+
+        // --- Snow Script ---
+        function createSnow() {
+            const snowContainer = document.getElementById('snow');
+            const icons = ['❄', '❅', '❆', '•'];
+            for (let i = 0; i < 30; i++) {
+                let flake = document.createElement('div');
+                flake.className = 'snowflake';
+                flake.innerText = icons[Math.floor(Math.random() * icons.length)];
+                flake.style.left = Math.random() * 100 + 'vw';
+                flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                flake.style.opacity = Math.random();
+                flake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                flake.style.animationDelay = Math.random() * 5 + 's';
+                snowContainer.appendChild(flake);
+            }
+        }
+
+        const router = {
+            last: 'view-home',
+            home: () => { router.show('view-home'); app.renderHome(); },
+            all: () => { 
+                document.getElementById('list-title').innerText = "ສິນຄ້າທັງໝົດ";
+                app.renderProds(app.db.products, 'list-prods');
+                router.show('view-list');
+            },
+            cat: (id) => {
+                const c = app.db.categories.find(x => x.id == id);
+                document.getElementById('list-title').innerText = "ໝວດໝູ່: " + (c ? c.name : "");
+                app.renderProds(app.db.products.filter(p => p.catid == id), 'list-prods');
+                router.show('view-list');
+            },
+            detail: (id) => {
+                const p = app.db.products.find(x => x.id == id);
+                if(!p) return;
+                activeProduct = p; 
+                document.getElementById('det-img').src = p.img;
+                document.getElementById('det-title').innerText = p.name;
+                document.getElementById('det-price').innerText = Number(p.price).toLocaleString() + " ₭";
+                document.getElementById('det-desc').innerText = p.desc;
+                router.show('view-detail');
+            },
+            admin: () => { router.show('view-admin'); app.renderAdmin(); },
+            show: (id) => {
+                const active = document.querySelector('.page-view:not(.hidden)');
+                if(active) router.last = active.id;
+                document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden'));
+                document.getElementById(id).classList.remove('hidden');
+                window.scrollTo(0,0);
+            },
+            back: () => router.show(router.last || 'view-home')
+        };
+
+        const app = {
+            db: { settings: { banner: "", contact: { wa: "", tt: "", fb: "" } }, categories: [], products: [], users: [] },
+            
+            init: async function() {
+                createSnow();
+                await this.fetchData();
+                this.renderHome();
+            },
+
+            fetchData: async function() {
+                try {
+                    const { data: settings } = await _supabase.from('settings').select('*').eq('id', 1).maybeSingle();
+                    const { data: categories } = await _supabase.from('categories').select('*');
+                    const { data: products } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
+                    const { data: users } = await _supabase.from('users').select('*');
+                    
+                    if(settings && settings.data) this.db.settings = settings.data;
+                    if(categories) this.db.categories = categories;
+                    if(products) this.db.products = products;
+                    if(users) this.db.users = users;
+                } catch (err) { console.error("Fetch Error:", err); }
+            },
+
+            handleSearch: function(e) {
+                const val = e.target.value.trim().toLowerCase();
+                if (val === "khoudadmin") {
+                    e.target.value = "";
+                    this.openModal('login-modal');
+                    return;
+                }
+                if (e.key === 'Enter' && val !== "") {
+                    const filtered = this.db.products.filter(p => p.name.toLowerCase().includes(val));
+                    document.getElementById('list-title').innerText = `ຜົນການຄົ້ນຫາ: "${val}"`;
+                    this.renderProds(filtered, 'list-prods');
+                    router.show('view-list');
+                }
+            },
+
+            login: async function() {
+                const u = document.getElementById('log-u').value.trim();
+                const p = document.getElementById('log-p').value.trim();
+                const found = this.db.users.find(user => user.username === u && user.password === p);
+                if(found || (u === "khoud" && p === "khoud123@")) { 
+                    this.closeModal('login-modal'); 
+                    router.admin(); 
+                } else { alert('Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!'); }
+            },
+
+            renderHome: function() {
+                if(this.db.settings.banner) {
+                    document.getElementById('hero').style.backgroundImage = `url('${this.db.settings.banner}')`;
+                }
+                document.getElementById('cat-list-home').innerHTML = this.db.categories.map(c => `
+                    <div class="cat-item" onclick="router.cat(${c.id})">
+                        <div class="cat-img-box"><img src="${c.img}"></div>
+                        <div class="cat-name">${c.name}</div>
+                    </div>
+                `).join('');
+                this.renderProds(this.db.products.slice(0, 8), 'home-prods');
+            },
+
+            renderProds: function(list, target) {
+                const area = document.getElementById(target);
+                if (!list || list.length === 0) {
+                    area.innerHTML = "<p style='grid-column:1/-1; text-align:center; padding:50px;'>ບໍ່ພົບຂໍ້ມູນ</p>";
+                    return;
+                }
+                area.innerHTML = list.map(p => `
+                    <div class="prod-card">
+                        <img src="${p.img}" class="prod-img">
+                        <div class="prod-body">
+                            <div class="prod-title">${p.name}</div>
+                            <div class="prod-price">${Number(p.price).toLocaleString()} ₭</div>
+                            <button class="btn btn-red btn-sm" style="width:100%" onclick="router.detail(${p.id})">ລາຍລະອຽດ</button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            // --- ลิงก์เบอร์ WhatsApp ตรงตามสั่ง ---
+            orderWhatsApp: function() {
+                if(!activeProduct) return;
+                const waNum = "8562029268167"; 
+                const message = `ສະບາຍດີ! ຂ້ອຍຕ້ອງການສັ່ງຊື້:\n\n📦 ສິນຄ້າ: ${activeProduct.name}\n💰 ລາຄາ: ${Number(activeProduct.price).toLocaleString()} ₭\n\nກະລຸນາແນະນຳຂັ້ນຕອນການຊື້ໃຫ້ແດ່.`;
+                const cleanNum = waNum.replace(/\D/g, '');
+                const url = `https://wa.me/${cleanNum}?text=${encodeURIComponent(message)}`;
+                window.open(url, '_blank');
+            },
+
+            tab: function(id) {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.add('hidden'));
+                document.getElementById(id).classList.remove('hidden');
+                this.renderAdmin();
+            },
+
+            renderAdmin: function() {
+                document.getElementById('t-prods').innerHTML = this.db.products.map(p => `
+                    <tr><td>${p.name}</td><td>${Number(p.price).toLocaleString()}</td><td><button class="btn btn-outline btn-sm" onclick="app.editP(${p.id})">Edit</button> <button class="btn btn-red btn-sm" onclick="app.delP(${p.id})">Del</button></td></tr>
+                `).join('');
+                document.getElementById('p-cat').innerHTML = this.db.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                document.getElementById('t-cats').innerHTML = this.db.categories.map(c => `
+                    <tr><td><img src="${c.img}" width="40"></td><td>${c.name}</td><td><button class="btn btn-outline btn-sm" onclick="app.editC(${c.id})">Edit</button> <button class="btn btn-red btn-sm" onclick="app.delC(${c.id})">Del</button></td></tr>
+                `).join('');
+                document.getElementById('t-users').innerHTML = this.db.users.map(u => `
+                    <tr><td>${u.username}</td><td>${u.password}</td><td><button class="btn btn-red btn-sm" onclick="app.delU(${u.id})">ລົບ</button></td></tr>
+                `).join('');
+
+                document.getElementById('s-banner').value = this.db.settings.banner || '';
+                document.getElementById('s-wa').value = this.db.settings.contact.wa || '';
+                document.getElementById('s-tt').value = this.db.settings.contact.tt || '';
+                document.getElementById('s-fb').value = this.db.settings.contact.fb || '';
+            },
+
+            saveProduct: async function() {
+                const id = document.getElementById('edit-p-id').value;
+                const obj = { 
+                    name: document.getElementById('p-name').value, 
+                    price: parseInt(document.getElementById('p-price').value), 
+                    img: document.getElementById('p-img').value, 
+                    catid: parseInt(document.getElementById('p-cat').value), 
+                    desc: document.getElementById('p-desc').value 
+                };
+                let res;
+                if(id) res = await _supabase.from('products').update(obj).eq('id', id);
+                else res = await _supabase.from('products').insert([obj]);
+                if(res.error) { alert("Error: " + res.error.message); } 
+                else { alert("ສຳເລັດ!"); location.reload(); }
+            },
+
+            saveCategory: async function() {
+                const id = document.getElementById('edit-c-id').value;
+                const obj = { name: document.getElementById('c-name').value, img: document.getElementById('c-img').value };
+                let res;
+                if(id) res = await _supabase.from('categories').update(obj).eq('id', id);
+                else res = await _supabase.from('categories').insert([obj]);
+                if(res.error) alert("Error: " + res.error.message);
+                else { alert("ສຳເລັດ!"); location.reload(); }
+            },
+
+            saveUser: async function() {
+                const u = document.getElementById('u-user').value.trim();
+                const p = document.getElementById('u-pass').value.trim();
+                if(u && p) {
+                    const { error } = await _supabase.from('users').insert([{ username: u, password: p }]);
+                    if(error) alert(error.message);
+                    else location.reload();
+                }
+            },
+
+            saveSettings: async function() {
+                const newData = {
+                    banner: document.getElementById('s-banner').value,
+                    contact: {
+                        wa: document.getElementById('s-wa').value,
+                        tt: document.getElementById('s-tt').value,
+                        fb: document.getElementById('s-fb').value
+                    }
+                };
+                const { error } = await _supabase.from('settings').update({ data: newData }).eq('id', 1);
+                if(error) alert(error.message);
+                else { alert('Saved!'); location.reload(); }
+            },
+
+            delP: async function(id) { if(confirm('ລົບສິນຄ້າ?')) { await _supabase.from('products').delete().eq('id', id); location.reload(); } },
+            delC: async function(id) { if(confirm('ລົບໝວດໝູ່?')) { await _supabase.from('categories').delete().eq('id', id); location.reload(); } },
+            delU: async function(id) { if(confirm('ລົບ Admin?')) { await _supabase.from('users').delete().eq('id', id); location.reload(); } },
+
+            editP: function(id) {
+                const p = this.db.products.find(x => x.id == id);
+                document.getElementById('edit-p-id').value = p.id;
+                document.getElementById('p-name').value = p.name;
+                document.getElementById('p-price').value = p.price;
+                document.getElementById('p-img').value = p.img;
+                document.getElementById('p-cat').value = p.catid;
+                document.getElementById('p-desc').value = p.desc;
+                document.getElementById('btn-save-p').innerText = "Update Product";
+                window.scrollTo(0,0);
+            },
+
+            editC: function(id) {
+                const c = this.db.categories.find(x => x.id == id);
+                document.getElementById('edit-c-id').value = c.id;
+                document.getElementById('c-name').value = c.name;
+                document.getElementById('c-img').value = c.img;
+                document.getElementById('btn-save-c').innerText = "Update Category";
+                window.scrollTo(0,0);
+            },
+
+            openContact: function() {
+                const wa = this.db.settings.contact.wa || "";
+                const tt = this.db.settings.contact.tt || "";
+                const fb = this.db.settings.contact.fb || "";
+                const cleanWa = wa.replace(/\D/g, '');
+                document.getElementById('l-wa').href = wa ? `https://wa.me/${cleanWa}` : "#";
+                document.getElementById('l-tt').href = tt.startsWith('http') ? tt : (tt ? `https://tiktok.com/@${tt}` : "#");
+                document.getElementById('l-fb').href = fb.startsWith('http') ? fb : (fb ? fb : "#");
+                this.openModal('contact-modal');
+            },
+            openModal: function(id) { 
+                const modal = document.getElementById(id);
+                if(modal) modal.classList.add('active'); 
+            },
+            closeModal: function(id) { 
+                const modal = document.getElementById(id);
+                if(modal) modal.classList.remove('active'); 
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
