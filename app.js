@@ -585,8 +585,11 @@ function togglePw(id, btn) {
                     if (!ls || ls.classList.contains('hide')) return;
                     ls.classList.add('hide');
                     document.body.style.overflow = '';
+                    // force hide หลัง transition เสร็จ
                     setTimeout(() => {
                         ls.style.display = 'none';
+                        ls.style.visibility = 'hidden';
+                        ls.style.pointerEvents = 'none';
                         if (this.db.popups && this.db.popups.length > 0) {
                             const firstPopup = this.db.popups[0];
                             const firstImgSrc = firstPopup.custom_img || (() => {
