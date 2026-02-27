@@ -6,33 +6,48 @@ function togglePw(id, btn) {
     else { input.type = 'password'; icon.className = 'fas fa-eye'; }
 }
 
-// ===== slideAnimate =====
-    // ===== SLIDE ANIMATE — ต้องกำหนดก่อน app ทุกอย่าง =====
+// ===== slideAnimate — Scroll Reveal with Stagger =====
     function slideAnimate(selector) {
         const items = typeof selector === 'string'
             ? document.querySelectorAll(selector)
             : selector;
-        if(!items || !items.length) return;
-        const obs = new IntersectionObserver((entries, o) => {
-            let idx = 0;
-            entries.forEach(entry => {
-                if(entry.isIntersecting) {
-                    const delay = idx * 60;
-                    idx++;
-                    setTimeout(() => entry.target.classList.add('visible'), delay);
-                    o.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.05, rootMargin: '0px 0px -10px 0px' });
-        items.forEach(el => { el.classList.remove('visible'); obs.observe(el); });
-        // Fallback: บังคับ visible ถ้า 1.5s แล้วยังค้าง
+        if (!items || !items.length) return;
+
+        // Reset ทุก element ก่อน (กรณี re-render)
+        items.forEach((el, i) => {
+            el.classList.remove('visible');
+            el.setAttribute('data-reveal-index', i);
+        });
+
+        const obs = new IntersectionObserver((entries, observer) => {
+            entries
+                .filter(e => e.isIntersecting)
+                .sort((a, b) =>
+                    parseInt(a.target.getAttribute('data-reveal-index')) -
+                    parseInt(b.target.getAttribute('data-reveal-index'))
+                )
+                .forEach((entry, localIdx) => {
+                    // stagger 100ms ต่อการ์ด — ชัดเจนแต่ไม่ช้าเกิน
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, localIdx * 100);
+                    observer.unobserve(entry.target);
+                });
+        }, {
+            threshold: 0.05,               // trigger ง่าย แค่เห็นนิดเดียวก็ animate
+            rootMargin: '0px 0px -20px 0px'
+        });
+
+        items.forEach(el => observer.observe(el));
+
+        // Fallback 3s
         setTimeout(() => {
             items.forEach((el, i) => {
                 if (!el.classList.contains('visible')) {
-                    setTimeout(() => el.classList.add('visible'), i * 60);
+                    setTimeout(() => el.classList.add('visible'), i * 100);
                 }
             });
-        }, 800);
+        }, 3000);
     }
 
 // ===== Main App =====
@@ -321,6 +336,31 @@ function togglePw(id, btn) {
 
         // Snow removed
 
+        // ===== HERO SLIDESHOW =====
+        const heroSlider = {
+            _timer: null,
+            _current: 0,
+            _total: 0,
+            start: function(total) {
+                this._total = total;
+                this._current = 0;
+                clearInterval(this._timer);
+                if(total <= 1) return;
+                this._timer = setInterval(() => {
+                    this._current = (this._current + 1) % this._total;
+                    this.goTo(this._current);
+                }, 4000);
+            },
+            goTo: function(idx) {
+                this._current = idx;
+                const slides = document.querySelectorAll('#hero .hero-slide');
+                const dots = document.querySelectorAll('#hero .hero-dot');
+                slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+                dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+            },
+            stop: function() { clearInterval(this._timer); }
+        };
+
         // ===== POPUP SYSTEM =====
         const popupSystem = {
             popups: [],
@@ -374,15 +414,35 @@ function togglePw(id, btn) {
                 container.innerHTML = '';
                 container.appendChild(overlay);
                 document.body.style.overflow = 'hidden';
+
+                // Trigger smooth animation after DOM paint
+                requestAnimationFrame(() => {
+                    overlay.classList.add('popup-visible');
+                    const pc = overlay.querySelector('.popup-container');
+                    if(pc) requestAnimationFrame(() => pc.classList.add('popup-in'));
+                });
             },
 
             close: function() {
-                document.getElementById('popup-system').innerHTML = '';
-                document.body.style.overflow = 'auto';
-                
-                this.currentIndex++;
-                if (this.currentIndex < this.popups.length) {
-                    setTimeout(() => this.show(), 200);
+                const container = document.getElementById('popup-system');
+                const overlay = container.querySelector('.popup-overlay');
+                const pc = overlay ? overlay.querySelector('.popup-container') : null;
+
+                const doClose = () => {
+                    container.innerHTML = '';
+                    document.body.style.overflow = 'auto';
+                    this.currentIndex++;
+                    if (this.currentIndex < this.popups.length) {
+                        setTimeout(() => this.show(), 200);
+                    }
+                };
+
+                if(pc && overlay) {
+                    pc.classList.add('popup-out');
+                    overlay.style.background = 'rgba(0,0,0,0)';
+                    setTimeout(doClose, 260);
+                } else {
+                    doClose();
                 }
             },
 
@@ -442,10 +502,33 @@ function togglePw(id, btn) {
             },
             show: (id) => {
                 const active = document.querySelector('.page-view:not(.hidden)');
-                if(active && active.id !== id) router.history.push(active.id);
-                document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden'));
-                document.getElementById(id).classList.remove('hidden');
-                window.scrollTo(0,0);
+                if (active && active.id === id) return; // ไม่ทำถ้าหน้าเดิม
+                if (active) router.history.push(active.id);
+
+                const overlay = document.getElementById('page-transition-overlay');
+
+                // ถ้าไม่มีหน้า active (load ครั้งแรก) หรือไม่มี overlay — เปลี่ยนหน้าตรงๆ ไม่ fade
+                if (!active || !overlay) {
+                    document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden'));
+                    document.getElementById(id).classList.remove('hidden');
+                    window.scrollTo(0, 0);
+                    return;
+                }
+
+                // Flash มืดครั้งเดียว → เปลี่ยนหน้า → สว่างขึ้น
+                overlay.style.transition = 'opacity 0.18s ease';
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'all';
+
+                setTimeout(() => {
+                    document.querySelectorAll('.page-view').forEach(v => v.classList.add('hidden'));
+                    document.getElementById(id).classList.remove('hidden');
+                    window.scrollTo(0, 0);
+
+                    overlay.style.transition = 'opacity 0.28s ease';
+                    overlay.style.opacity = '0';
+                    overlay.style.pointerEvents = 'none';
+                }, 180);
             },
             back: () => {
                 const prev = router.history.pop() || 'view-home';
@@ -493,22 +576,45 @@ function togglePw(id, btn) {
                 await this.loadUserSession();
                 this.renderHome();
 
-                if (this.db.popups && this.db.popups.length > 0) {
-                    popupSystem.init(this.db.popups);
-                }
-
-                // ปิด loading screen ทันที ไม่รอ
                 this.loading(false);
                 localStorage.removeItem('adminLogin');
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        const loadingScreen = document.getElementById('loading-screen');
-                        if (loadingScreen) {
-                            loadingScreen.classList.add('hide');
-                            setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
+
+                // ปิด loading screen — รอรูปแรกโหลด หรือ max 1.5s
+                const _hideLoading = () => {
+                    const ls = document.getElementById('loading-screen');
+                    if (!ls || ls.classList.contains('hide')) return;
+                    ls.classList.add('hide');
+                    document.body.style.overflow = '';
+                    setTimeout(() => {
+                        ls.style.display = 'none';
+                        if (this.db.popups && this.db.popups.length > 0) {
+                            const firstPopup = this.db.popups[0];
+                            const firstImgSrc = firstPopup.custom_img || (() => {
+                                const p = this.db.products.find(x => x.id === firstPopup.product_id);
+                                return p ? p.img : null;
+                            })();
+                            if (firstImgSrc) {
+                                const pre = new Image();
+                                pre.onload = pre.onerror = () => popupSystem.init(this.db.popups);
+                                pre.src = firstImgSrc;
+                                setTimeout(() => popupSystem.init(this.db.popups), 5000);
+                            } else {
+                                popupSystem.init(this.db.popups);
+                            }
                         }
-                    });
-                });
+                    }, 500);
+                };
+
+                // พยายามรอรูปแรก แต่ถ้าไม่มีหรือโหลดเสร็จแล้วให้ปิดทันที
+                const _firstImg = document.querySelector('#cat-list-home img:not(.hot-badge)');
+                const _maxWait = setTimeout(_hideLoading, 1500); // ไม่เกิน 1.5 วินาทีต้องปิด
+                if (_firstImg && !_firstImg.complete) {
+                    _firstImg.addEventListener('load', () => { clearTimeout(_maxWait); _hideLoading(); }, { once: true });
+                    _firstImg.addEventListener('error', () => { clearTimeout(_maxWait); _hideLoading(); }, { once: true });
+                } else {
+                    clearTimeout(_maxWait);
+                    _hideLoading();
+                }
 
                 // PHASE 2: โหลดส่วนที่เหลือ background ไม่บล็อก UI
                 Promise.all([
@@ -563,11 +669,66 @@ function togglePw(id, btn) {
 
             setActiveNav: function(page) {
                 document.querySelectorAll('.mobile-nav-item').forEach(item => item.classList.remove('active'));
-                document.getElementById(`nav-${page}`).classList.add('active');
+                const navEl = document.getElementById('nav-' + page);
+                if(navEl) navEl.classList.add('active');
+            },
+
+
+            renderFooter: function() {
+                const s = this.db.settings || {};
+                const c = s.contact || {};
+                // logo
+                const logoImg = document.getElementById('footer-logo-img');
+                if(logoImg) {
+                    if(s.footer_logo) { logoImg.src = s.footer_logo; logoImg.style.display = 'block'; }
+                    else logoImg.style.display = 'none';
+                }
+                // desc
+                const descEl = document.getElementById('footer-desc');
+                if(descEl) descEl.textContent = s.footer_desc || 'ຮ້ານຄ້າເກມມິ່ງທີ່ດີທີ່ສຸດ';
+                // ซ่อน social links section (ไม่ใช้แล้ว)
+                const socialsEl = document.getElementById('footer-socials');
+                if(socialsEl) socialsEl.innerHTML = '';
+                const secTitle = document.querySelector('.footer-section-title');
+                if(secTitle) secTitle.style.display = 'none';
+                // Facebook Page Widget
+                const fbWidget = document.getElementById('footer-fb-widget');
+                const fbPageUrl = s.fb_page_url || (c.fb || '');
+                const fbPageName = s.fb_page_name || 'Eazy SHOP';
+                const fbLogoUrl = s.footer_logo || 'https://img5.pic.in.th/file/secure-sv1/451040865_1553605488920298_8130537799367782724_n4d648c430d775aef.png';
+                if(fbWidget && fbPageUrl) {
+                    fbWidget.style.display = 'block';
+                    const nameEl = document.getElementById('fb-widget-name');
+                    if(nameEl) nameEl.textContent = fbPageName;
+                    const logoEl = document.getElementById('fb-widget-logo');
+                    if(logoEl) logoEl.src = fbLogoUrl;
+                    const followBtn = document.getElementById('fb-widget-follow');
+                    if(followBtn) followBtn.href = fbPageUrl;
+                    const shareBtn = document.getElementById('fb-widget-share');
+                    if(shareBtn) shareBtn.href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(fbPageUrl);
+                } else if(fbWidget) {
+                    fbWidget.style.display = 'none';
+                }
             },
 
             renderHome: function() {
-                if(this.db.settings.banner) document.getElementById('hero').style.backgroundImage = `url('${this.db.settings.banner}')`;
+                // ===== Banner Slideshow =====
+                const hero = document.getElementById('hero');
+                const banners = this.db.settings.banners || (this.db.settings.banner ? [this.db.settings.banner] : []);
+                if(hero) {
+                    if(banners.length === 0) {
+                        hero.innerHTML = '';
+                        hero.style.backgroundImage = '';
+                    } else if(banners.length === 1) {
+                        hero.innerHTML = `<div class="hero-slide active" style="background-image:url('${banners[0]}');"></div>`;
+                    } else {
+                        // Multiple — build slides + dots
+                        let slidesHtml = banners.map((b,i) => `<div class="hero-slide${i===0?' active':''}" style="background-image:url('${b}');"></div>`).join('');
+                        let dotsHtml = banners.map((_,i) => `<div class="hero-dot${i===0?' active':''}" onclick="heroSlider.goTo(${i})"></div>`).join('');
+                        hero.innerHTML = slidesHtml + `<div class="hero-dots">${dotsHtml}</div>`;
+                        heroSlider.start(banners.length);
+                    }
+                }
                 
                 const hotCatIds = this.db.hot_deals.categories || [];
                 const sortedCats = [...this.db.categories].sort((a, b) =>
@@ -607,6 +768,8 @@ function togglePw(id, btn) {
                     return aHot - bHot;
                 });
                 this.renderProds(homeProds.slice(0, 10), 'home-prods');
+                // footer
+                this.renderFooter();
                 // ===== Trigger slide-in animations =====
                 slideAnimate('#cat-list-home .slide-up');
                 slideAnimate('#home-prods .slide-up');
@@ -887,12 +1050,16 @@ function togglePw(id, btn) {
                 window.open(o.file_content, '_blank');
             },
 
-            showOrderDetail: function(orderId) {
-                const order = (this.db.orders || []).find(o => String(o.id) == String(orderId));
-                if(!order) return;
+            showOrderDetail: async function(orderId) {
+                // หาจาก cache ก่อน ถ้าไม่เจอ fetch จาก DB (กรณี order จากวงล้อ)
+                let order = (this.db.orders || []).find(o => String(o.id) == String(orderId));
+                if(!order) {
+                    const { data } = await _supabase.from('orders').select('*').eq('id', orderId).single();
+                    if(!data) return;
+                    order = data;
+                }
                 this._viewingOrder = order;
                 
-                // หาข้อมูล product เพิ่มเติม (tutorial, file)
                 const prod = (this.db.products || []).find(p => p.id == order.product_id);
                 if(prod) {
                     this._viewingOrder.tutorial_url = prod.tutorial_url;
@@ -900,13 +1067,18 @@ function togglePw(id, btn) {
                 }
                 
                 const dateStr = order.created_at ? new Date(order.created_at).toLocaleString('lo-LA') : '-';
+                const fromSpin = order.note === 'ໄດ້ຈາກວົງລໍ້';
+                const priceHtml = fromSpin
+                    ? `<b style="color:var(--main-red);">0 ₭</b> <span style="color:#f5c518;font-size:11px;"><i class="fas fa-sync-alt" style="margin-right:2px;"></i>ໄດ້ຈາກວົງລໍ້</span>`
+                    : `<b style="color:var(--main-red);">${Number(order.total_amount || order.product_price || 0).toLocaleString()} ₭</b>`;
+
                 document.getElementById('order-detail-content').innerHTML = `
                     <div style="text-align:center; margin-bottom:12px;">
                         <img src="${order.product_img || ''}" style="width:100px; height:100px; object-fit:cover; border-radius:10px;">
                     </div>
                     <div style="background:#111; padding:12px; border-radius:10px; font-size:13px;">
                         <div style="margin-bottom:8px;"><span style="color:#aaa;">ສິນຄ້າ:</span> <b>${order.product_name || '-'}</b></div>
-                        <div style="margin-bottom:8px;"><span style="color:#aaa;">ລາຄາ:</span> <b style="color:var(--main-red);">${Number(order.total_amount || order.product_price || 0).toLocaleString()} ₭</b></div>
+                        <div style="margin-bottom:8px;"><span style="color:#aaa;">ລາຄາ:</span> ${priceHtml}</div>
                         <div><span style="color:#aaa;">ເວລາສັ່ງຊື້:</span> ${dateStr}</div>
                     </div>
                     ${order.product_unique_id ? `
@@ -927,27 +1099,34 @@ function togglePw(id, btn) {
                 this.openModal('order-detail-modal');
             },
 
-            renderOrderHistory: function() {
+            renderOrderHistory: async function() {
                 if(!currentUser) return;
-                const myOrders = (this.db.orders || [])
-                    .filter(o => o.user_id == currentUser.id)
-                    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
-                    .slice(0, 10);
-                
                 const el = document.getElementById('order-history-list');
                 if(!el) return;
-                if(myOrders.length === 0) {
+                el.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;"><i class="fas fa-spinner fa-spin"></i> ກຳລັງໂຫຼດ...</div>';
+                const { data: myOrders } = await _supabase
+                    .from('orders').select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                if(!myOrders || myOrders.length === 0) {
                     el.innerHTML = '<div style="text-align:center; color:#aaa; padding:30px;">ຍັງບໍ່ມີປະຫວັດການສັ່ງຊື້</div>';
                     return;
                 }
+                // อัปเดต cache ให้ showOrderDetail หาเจอ
+                this.db.orders = myOrders;
                 el.innerHTML = myOrders.map(o => {
                     const dateStr = o.created_at ? new Date(o.created_at).toLocaleString('lo-LA') : '-';
+                    const fromSpin = o.note === 'ໄດ້ຈາກວົງລໍ້';
+                    const priceText = fromSpin
+                        ? '<span style="color:#f5c518;font-size:11px;"><i class="fas fa-sync-alt" style="margin-right:3px;"></i>ໄດ້ຈາກວົງລໍ້</span>'
+                        : `${Number(o.total_amount || o.product_price || 0).toLocaleString()} ₭`;
                     return `
                     <div class="history-item" style="display:flex; align-items:center; gap:12px; padding:12px; background:#111; border-radius:12px; margin-bottom:10px;">
                         <img src="${o.product_img || ''}" style="width:60px; height:60px; object-fit:cover; border-radius:8px; flex-shrink:0;" onerror="this.src='https://via.placeholder.com/60x60?text=No+Img'">
                         <div style="flex:1; min-width:0;">
                             <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${o.product_name || '-'}</div>
-                            <div style="color:var(--main-red); font-size:13px; margin:3px 0;">${Number(o.total_amount || o.product_price || 0).toLocaleString()} ₭</div>
+                            <div style="color:var(--main-red); font-size:13px; margin:3px 0;">${priceText}</div>
                             <div style="color:#888; font-size:11px;">${dateStr}</div>
                         </div>
                         <button class="btn btn-outline btn-sm" style="white-space:nowrap;" onclick="app.showOrderDetail('${o.id}')">
@@ -1308,10 +1487,16 @@ function togglePw(id, btn) {
                 `}).join('');
 
                 const s = this.db.settings;
-                document.getElementById('s-banner').value = s.banner || "";
-                document.getElementById('s-wa').value = s.contact.wa || "";
-                document.getElementById('s-tt').value = s.contact.tt || "";
-                document.getElementById('s-fb').value = s.contact.fb || "";
+                // banner list
+                if(!s.banners && s.banner) s.banners = [s.banner];
+                this.renderBannerAdmin();
+                document.getElementById('s-wa').value = s.contact?.wa || "";
+                document.getElementById('s-tt').value = s.contact?.tt || "";
+                document.getElementById('s-fb').value = s.contact?.fb || "";
+                if(document.getElementById('s-footer-logo')) document.getElementById('s-footer-logo').value = s.footer_logo || "";
+                if(document.getElementById('s-footer-desc')) document.getElementById('s-footer-desc').value = s.footer_desc || "";
+                if(document.getElementById('s-fb-page')) document.getElementById('s-fb-page').value = s.fb_page_url || "";
+                if(document.getElementById('s-fb-page-name')) document.getElementById('s-fb-page-name').value = s.fb_page_name || "";
                 
                 // Load Hot Deals
                 this.loadHotItems();
@@ -1672,12 +1857,17 @@ function togglePw(id, btn) {
 
             saveSettings: async function() {
                 const data = {
-                    banner: document.getElementById('s-banner').value,
+                    banners: this.db.settings.banners || [],
+                    banner: (this.db.settings.banners || [])[0] || '', // backward compat
                     contact: {
                         wa: document.getElementById('s-wa').value,
                         tt: document.getElementById('s-tt').value,
                         fb: document.getElementById('s-fb').value
-                    }
+                    },
+                    footer_logo: (document.getElementById('s-footer-logo') || {}).value || (this.db.settings.footer_logo || ''),
+                    footer_desc: (document.getElementById('s-footer-desc') || {}).value || (this.db.settings.footer_desc || ''),
+                    fb_page_url: (document.getElementById('s-fb-page') || {}).value || (this.db.settings.fb_page_url || ''),
+                    fb_page_name: (document.getElementById('s-fb-page-name') || {}).value || (this.db.settings.fb_page_name || '')
                 };
                 this.loading(true);
                 const { error } = await _supabase.from('settings').update({ data }).eq('id', 1);
@@ -1685,6 +1875,36 @@ function togglePw(id, btn) {
                 if(error) { NotificationManager.error(error.message); return; }
                 NotificationManager.success('ບັນທຶກການຕັ້ງຄ່າສຳເລັດ!');
                 await this.fetchData();
+            },
+
+            // ===== BANNER MANAGEMENT =====
+            addBanner: async function() {
+                const url = (document.getElementById('s-banner-new').value || '').trim();
+                if(!url) return;
+                if(!this.db.settings.banners) this.db.settings.banners = this.db.settings.banner ? [this.db.settings.banner] : [];
+                this.db.settings.banners.push(url);
+                document.getElementById('s-banner-new').value = '';
+                this.renderBannerAdmin();
+                await this.saveSettings();
+            },
+            removeBanner: async function(idx) {
+                if(!this.db.settings.banners) return;
+                this.db.settings.banners.splice(idx, 1);
+                this.renderBannerAdmin();
+                await this.saveSettings();
+            },
+            renderBannerAdmin: function() {
+                const el = document.getElementById('banner-list-admin');
+                if(!el) return;
+                const banners = this.db.settings.banners || (this.db.settings.banner ? [this.db.settings.banner] : []);
+                if(!banners.length) { el.innerHTML = '<p style="color:#555;font-size:12px;text-align:center;padding:8px;">ຍັງບໍ່ມີ banner</p>'; return; }
+                el.innerHTML = banners.map((b,i) => `
+                    <div style="display:flex;align-items:center;gap:8px;background:#1a1a1a;border-radius:8px;padding:8px 10px;border:1px solid #2a2a2a;">
+                        <img src="${b}" style="width:56px;height:36px;object-fit:cover;border-radius:5px;flex-shrink:0;" onerror="this.src='https://via.placeholder.com/56x36?text=?'">
+                        <div style="flex:1;font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b}</div>
+                        <i class="fas fa-trash" style="color:#ff4444;cursor:pointer;font-size:14px;flex-shrink:0;" onclick="app.removeBanner(${i})"></i>
+                    </div>
+                `).join('');
             },
 
             saveUser: async function() {
@@ -2163,7 +2383,7 @@ function togglePw(id, btn) {
                     // ลบรายการเติมเงินทิ้งเลย (ไม่เปลืองพื้นที่ database)
                     await _supabase.from('topup_requests').delete().eq('id', id);
                     
-                    await app._updateSpinProgress(topup.amount);
+                    await app._updateSpinProgress(topup.amount, topup.user_id);
                     NotificationManager.success('ອະນຸມັດສຳເລັດ! ລຶບລາຍການແລ້ວ');
                     await this.fetchData();
                     this.renderAdmin();
@@ -2190,10 +2410,14 @@ function togglePw(id, btn) {
                     return;
                 }
                 const menu = document.getElementById('user-menu');
-                const isOpening = menu.style.display === 'none';
+                const isOpening = menu.style.display === 'none' || menu.style.display === '';
                 menu.style.display = isOpening ? 'block' : 'none';
+                // ไม่ให้ nav-profile ค้าง active — เคลียร์ทันทีหลังปิด
+                const navProfile = document.getElementById('nav-profile');
                 if(isOpening) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    if(navProfile) navProfile.classList.remove('active');
                 }
             },
 
@@ -2542,7 +2766,10 @@ function togglePw(id, btn) {
                     document.getElementById('login-btn').style.display = 'none';
                     document.getElementById('user-balance').textContent = 
                         Number(currentUser.balance || 0).toLocaleString() + ' ₭';
-                    this.checkAdminAccess(); // ตรวจสอบสิทธิ์ Admin
+                    this.checkAdminAccess();
+                    // อัปเดต balance display real-time
+                    const balEl = document.getElementById('user-balance');
+                    if(balEl) balEl.textContent = Number(currentUser.balance||0).toLocaleString() + ' ₭';
                 } else {
                     document.getElementById('user-avatar').style.display = 'none';
                     document.getElementById('login-btn').style.display = 'flex';
@@ -2874,8 +3101,19 @@ function togglePw(id, btn) {
                 this.renderAdmin();
             },
 
-            openModal: (id) => { const el = document.getElementById(id); el.classList.remove('hidden'); el.classList.add('active'); },
-            closeModal: (id) => { const el = document.getElementById(id); el.classList.remove('active'); el.classList.add('hidden'); },
+            openModal: (id) => {
+                const el = document.getElementById(id);
+                el.classList.remove('hidden');
+                el.style.opacity = '0';
+                el.classList.add('active');
+                requestAnimationFrame(() => { el.style.transition = 'opacity 0.25s ease'; el.style.opacity = '1'; });
+            },
+            closeModal: (id) => {
+                const el = document.getElementById(id);
+                el.style.transition = 'opacity 0.22s ease';
+                el.style.opacity = '0';
+                setTimeout(() => { el.classList.remove('active'); el.classList.add('hidden'); el.style.opacity = ''; el.style.transition = ''; }, 230);
+            },
 
             loadProductIds: async function() {
                 const tbody = document.getElementById('t-product-ids');
@@ -3168,51 +3406,71 @@ function togglePw(id, btn) {
             },
 
             onSpinEnd: async function(prize, newTickets) {
-                // ส่งรางวัล (ทำก่อน แล้วค่อยแสดง popup)
                 let resultDesc = '';
+                // แสดง processing popup ระหว่างรอผลจาก server
+                showProcessing('ກຳລັງຕວດສອບຜົນ...');
+
                 if(prize.type === 'cash') {
                     const newBal = (currentUser.balance||0) + (prize.amount||0);
                     await _supabase.from('site_users').update({ balance: newBal }).eq('id', currentUser.id);
                     currentUser.balance = newBal;
                     resultDesc = `ໄດ້ຮັບເງິນ ${Number(prize.amount).toLocaleString()} ₭ ເຂົ້າກະເປົ໋າແລ້ວ!`;
                     app.updateUserUI();
+
                 } else if(prize.type === 'product' && prize.product_id) {
-                    const prod = app.db.products.find(p => p.id === prize.product_id);
-                    if(prod) {
-                        const { error: orderErr } = await _supabase.from('orders').insert([{
-                            user_id: currentUser.id,
-                            product_id: prod.id,
-                            product_name: prod.name,
-                            product_img: prod.img || '',
-                            product_price: 0,
-                            quantity: 1,
-                            total_amount: 0,
-                            status: 'completed',
-                            note: 'ໄດ້ຈາກວົງລໍ້'
-                        }]);
-                        if(orderErr) {
-                            console.error('spin order error:', orderErr);
-                            resultDesc = `ໄດ້ຮັບ "${prod.name}" (ກະລຸນາຕິດຕໍ່ Admin ຖ້າບໍ່ໂຊ)`;
-                        } else {
-                            resultDesc = `ໄດ້ຮັບ "${prod.name}" ກວດສອບໃນປະຫວັດ!`;
-                        }
-                    } else {
-                        resultDesc = `ໄດ້ຮັບ "${prize.display_name}" ກະລຸນາຕິດຕໍ່ Admin`;
+                    // หา product จาก cache ก่อน ถ้าไม่เจอ fetch จาก DB
+                    let prod = app.db.products.find(p => p.id === prize.product_id);
+                    if(!prod) {
+                        const { data: pd } = await _supabase.from('products').select('*').eq('id', prize.product_id).single();
+                        if(pd) { prod = pd; app.db.products.push(pd); }
                     }
+                    const prodName = prod ? prod.name : prize.display_name;
+                    const prodImg  = prod ? (prod.img || '') : (prize.img_url || '');
+                    const prodId   = prod ? prod.id : prize.product_id;
+
+                    // generate ID เหมือนซื้อปกติ
+                    let genId = null;
+                    if(prod && prod.has_product_id) {
+                        const ts = Date.now().toString(36).toUpperCase();
+                        const rand = Math.random().toString(36).substring(2,6).toUpperCase();
+                        genId = 'EZ-' + ts + '-' + rand;
+                    }
+
+                    // insert order เหมือนซื้อปกติทุกอย่าง ราคา 0
+                    const { error: spinOrderErr } = await _supabase.from('orders').insert([{
+                        user_id: currentUser.id,
+                        product_id: prodId,
+                        product_name: prodName,
+                        product_img: prodImg,
+                        product_price: 0,
+                        quantity: 1,
+                        total_amount: 0,
+                        status: 'completed',
+                        note: 'ໄດ້ຈາກວົງລໍ້',
+                        product_unique_id: genId
+                    }]);
+                    if(spinOrderErr) console.error('spin order error:', spinOrderErr);
+
+                    resultDesc = genId
+                        ? `ໄດ້ຮັບ "${prodName}" — ລະຫັດ: ${genId}`
+                        : `ໄດ້ຮັບ "${prodName}"`;
+
+                    // real-time เหมือน buyProduct — fetch ข้อมูลใหม่ทั้งหมดแล้ว render
+                    await app.fetchData();
+                    await app.renderOrderHistory();
+
                 } else if(prize.type === 'custom') {
-                    resultDesc = `ກະລຸນາຕິດຕໍ່ Admin ເພື່ອຮັບ "${prize.display_name}"`;
+                    resultDesc = prize.display_name;
                 } else if(prize.type === 'miss') {
                     resultDesc = 'ໂຊກດີຄັ້ງໜ້າ!';
                 }
 
-                // อัปเดต stock_used
                 if(prize.stock > 0) {
                     await _supabase.from('spin_prizes').update({ stock_used: (prize.stock_used||0)+1 }).eq('id', prize.id);
                     prize.stock_used = (prize.stock_used||0)+1;
                 }
 
-                // บันทึกประวัติ spin
-                const { error: histErr } = await _supabase.from('spin_history').insert([{
+                await _supabase.from('spin_history').insert([{
                     user_id: currentUser.id,
                     username: currentUser.username,
                     prize_id: prize.id,
@@ -3220,19 +3478,17 @@ function togglePw(id, btn) {
                     prize_type: prize.type,
                     prize_amount: prize.amount || 0
                 }]);
-                if(histErr) console.error('spin history error:', histErr);
 
-                // แสดง popup หลังจากรู้ผลทุกอย่างแล้ว
+                // ปิด processing popup แล้วค่อยโชว์ผล
+                hideProcessing();
                 spinWheel.showWinPopup(prize, resultDesc);
                 document.getElementById('spin-result-desc').textContent = resultDesc;
                 document.getElementById('spin-win-desc').textContent = resultDesc;
 
-                // อัปเดต UI
                 this.isSpinning = false;
                 document.getElementById('spin-btn').disabled = false;
-                document.getElementById('spin-tickets-count').textContent = newTickets;
-                spinWheel._pendingResultDesc = resultDesc;
-                app.loadSpinHistory();
+                // refresh spin page ทั้งหมด — tickets, progress bar, history
+                await app.loadSpinPage();
             },
 
             confirmSpin: async function() {
@@ -3324,6 +3580,8 @@ function togglePw(id, btn) {
                 const overlay = document.getElementById('spin-win-overlay');
                 overlay.classList.remove('show');
                 setTimeout(() => { overlay.style.display = 'none'; }, 300);
+                // refresh ประวัติสั่งซื้อ real-time
+                app.renderOrderHistory();
             },
 
             launchConfetti: function() {
@@ -3404,47 +3662,57 @@ function togglePw(id, btn) {
 
             // Spin page init
             loadSpinPage: async function() {
-                // โหลด config (ไม่ต้อง login ก็ได้ เพื่อแสดง how_to และ prizes)
-                const { data: cfg } = await _supabase.from('spin_config').select('*').maybeSingle();
-                if(cfg) {
-                    const descEl = document.getElementById('spin-rule-desc');
-                    const howtoEl = document.getElementById('spin-how-to');
-                    if(descEl) descEl.textContent = cfg.description || '';
-                    if(howtoEl) {
-                        const txt = cfg.how_to || '';
-                        // แสดงทั้ง plain text (\n) และ html (<br>)
-                        const html = txt
-                            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') // escape HTML injection
-                            .replace(/\n/g,'<br>'); // แปลง newline → <br>
-                        howtoEl.innerHTML = html;
+                if(this._spinPageLoading) return;
+                this._spinPageLoading = true;
+                try {
+                    // โหลด config
+                    const { data: cfg } = await _supabase.from('spin_config').select('*').maybeSingle();
+                    const threshold = (cfg && cfg.threshold) ? cfg.threshold : 200000;
+                    if(cfg) {
+                        const descEl = document.getElementById('spin-rule-desc');
+                        const howtoEl = document.getElementById('spin-how-to');
+                        if(descEl) descEl.textContent = cfg.description || '';
+                        if(howtoEl) {
+                            const txt = cfg.how_to || '';
+                            howtoEl.innerHTML = txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+                        }
                     }
-                }
-                // prizes list (ไม่ต้อง login)
-                app.renderSpinPrizesList();
+                    // prizes list
+                    if(!spinWheel.prizes || !spinWheel.prizes.length) await spinWheel.loadPrizes();
+                    app.renderSpinPrizesList();
 
-                if(!currentUser) {
-                    // ถ้าไม่ login แสดงข้อความให้ login
-                    document.getElementById('spin-tickets-count').textContent = '-';
-                    document.getElementById('spin-progress-bar').style.width = '0%';
-                    document.getElementById('spin-progress-text').textContent = 'ກະລຸນາເຂົ້າສູ່ລະບົບ';
-                    return;
-                }
+                    if(!currentUser) {
+                        document.getElementById('spin-tickets-count').textContent = '-';
+                        document.getElementById('spin-progress-bar').style.width = '0%';
+                        document.getElementById('spin-progress-text').textContent = 'ກະລຸນາເຂົ້າສູ່ລະບົບ';
+                        return;
+                    }
 
-                // tickets + progress
-                const { data: freshUser } = await _supabase.from('site_users').select('spin_tickets,spin_progress').eq('id',currentUser.id).single().catch(()=>({data:null}));
-                if(freshUser) {
-                    currentUser.spin_tickets = freshUser.spin_tickets || 0;
-                    currentUser.spin_progress = freshUser.spin_progress || 0;
+                    // fetch fresh จาก DB โดยตรง
+                    const { data: freshUser } = await _supabase
+                        .from('site_users')
+                        .select('spin_tickets,spin_progress,balance')
+                        .eq('id', currentUser.id)
+                        .single();
+                    if(freshUser) {
+                        currentUser.spin_tickets = freshUser.spin_tickets || 0;
+                        currentUser.spin_progress = freshUser.spin_progress || 0;
+                        currentUser.balance = freshUser.balance || currentUser.balance;
+                    }
+                    const tk = currentUser.spin_tickets || 0;
+                    const progress = currentUser.spin_progress || 0;
+                    const pct = Math.min((progress / threshold) * 100, 100);
+                    document.getElementById('spin-tickets-count').textContent = tk;
+                    document.getElementById('spin-progress-bar').style.width = pct + '%';
+                    document.getElementById('spin-progress-text').textContent =
+                        `${Number(progress).toLocaleString()} / ${Number(threshold).toLocaleString()} ₭`;
+                    // balance header
+                    document.getElementById('user-balance').textContent = Number(currentUser.balance||0).toLocaleString() + ' ₭';
+                    // history
+                    await app.loadSpinHistory();
+                } finally {
+                    this._spinPageLoading = false;
                 }
-                const tk = currentUser.spin_tickets || 0;
-                document.getElementById('spin-tickets-count').textContent = tk;
-                const threshold = (cfg && cfg.threshold) ? cfg.threshold : 200000;
-                const progress = currentUser.spin_progress || 0;
-                const pct = Math.min((progress / threshold)*100, 100);
-                document.getElementById('spin-progress-bar').style.width = pct + '%';
-                document.getElementById('spin-progress-text').textContent = `${Number(progress).toLocaleString()} / ${Number(threshold).toLocaleString()} ₭`;
-                // history
-                app.loadSpinHistory();
             },
 
             renderSpinPrizesList: function() {
@@ -3670,36 +3938,48 @@ function togglePw(id, btn) {
             }
         };
 
-        // เมื่อ view-spin แสดง ให้ init — รอ prizes โหลดก่อนเสมอ
+        // override router.show — เปิดหน้า spin โหลดทุกอย่าง
         const _origRouterShow = router.show.bind(router);
-        router.show = async function(id) {
+        router.show = function(id) {
             _origRouterShow(id);
             if(id === 'view-spin') {
-                await spinWheel.loadPrizes();
-                spinWheel.draw();
-                app.loadSpinPage(); // โหลด config, prizes list, history ทุกอย่าง
+                (async () => {
+                    if(!spinWheel.prizes || !spinWheel.prizes.length) {
+                        await spinWheel.loadPrizes();
+                    }
+                    spinWheel.draw();
+                    await app.loadSpinPage();
+                })();
             }
         };
 
         // hook เติมเงินสำเร็จให้อัปเดต spin_progress
-        app._updateSpinProgress = async function(amount) {
-            if(!currentUser) return;
+        // _updateSpinProgress(amount, userId) — userId คือ user ที่เติมเงิน (อาจไม่ใช่ admin)
+        app._updateSpinProgress = async function(amount, userId) {
+            const targetId = userId || (currentUser && currentUser.id);
+            if(!targetId) return;
             const { data: cfg } = await _supabase.from('spin_config').select('threshold').maybeSingle();
             const threshold = (cfg && cfg.threshold) ? cfg.threshold : 200000;
-            const { data: u } = await _supabase.from('site_users').select('spin_progress,spin_tickets').eq('id',currentUser.id).single();
+            const { data: u } = await _supabase.from('site_users').select('spin_progress,spin_tickets').eq('id', targetId).single();
             let progress = (u?.spin_progress||0) + amount;
             let tickets = u?.spin_tickets||0;
-            // สะสมสิทธิ์ได้เรื่อยๆ ไม่จำกัด
             const newTickets = Math.floor(progress / threshold);
             if(newTickets > 0) {
                 tickets += newTickets;
                 progress = progress % threshold;
             }
-            await _supabase.from('site_users').update({ spin_progress: progress, spin_tickets: tickets }).eq('id',currentUser.id);
-            currentUser.spin_progress = progress;
-            currentUser.spin_tickets = tickets;
-            if(newTickets > 0) {
-                NotificationManager.success(`ໄດ້ຮັບ ${newTickets} ສິດໝຸນວົງລໍ້! (ລວມ: ${tickets} ສິດ)`);
+            await _supabase.from('site_users').update({ spin_progress: progress, spin_tickets: tickets }).eq('id', targetId);
+            // ถ้าเป็น currentUser ให้ update cache และ refresh spin page
+            if(currentUser && currentUser.id === targetId) {
+                currentUser.spin_progress = progress;
+                currentUser.spin_tickets = tickets;
+                if(newTickets > 0) {
+                    NotificationManager.success(`ໄດ້ຮັບ ${newTickets} ສິດໝຸນວົງລໍ້! (ລວມ: ${tickets} ສິດ)`);
+                }
+                const spinView = document.getElementById('view-spin');
+                if(spinView && !spinView.classList.contains('hidden')) {
+                    await app.loadSpinPage();
+                }
             }
         };
 
@@ -3747,6 +4027,9 @@ function togglePw(id, btn) {
 // ===== Legacy Scroll =====
 // Legacy support for old scroll-animate items on initial load
 document.addEventListener("DOMContentLoaded", function() {
+    // Lock scroll ทันทีตอนโหลด — ป้องกัน scroll เห็นหน้าหลังก่อนโหลดเสร็จ
+    document.body.style.overflow = 'hidden';
+
     const legacyItems = document.querySelectorAll('.scroll-animate');
     const legacyObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
